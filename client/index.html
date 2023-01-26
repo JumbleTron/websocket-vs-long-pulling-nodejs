@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Long pulling vs WebSocket</title>
+    <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+    <script>
+      function subscribe() {
+        $.ajax({
+          url: "http://localhost:8000/badges",
+          success: function(data, textStatus, xhr) {
+            if (xhr.status !== 200) {
+              $('#logger').append('[LP] status' + xhr.status + ' message: ' + textStatus +  '\n')
+              setTimeout(() => subscribe(), 1000);
+            } else {
+              $('#counter').html(parseInt($('#counter').html()) + data)
+              $('#logger').append('[LP] response: '  + data + '\n')
+              subscribe();
+            }
+          },
+          complete: function(xhr, textStatus) {
+            if (xhr.status === 502) {
+              $('#logger').append('[LP] timeout' +  '\n')
+              subscribe();
+            }
+          }
+        });
+      }
+
+      subscribe()
+
+      var webSocket = new WebSocket('ws://localhost:8000');
+      webSocket.onerror = function(event) {
+        $('#logger').append('[WS] '+ event.data + '\n')
+      };
+      webSocket.onopen = function() {
+        $('#logger').append('[WS] connection established\n')
+      };
+      webSocket.onmessage = function(event) {
+        $('#counter-ws').html(parseInt($('#counter-ws').html()) + parseInt(event.data))
+        $('#logger').append('[WS] response: ' + event.data  +'\n')
+      };
+
+    </script>
+</head>
+<body>
+<h4>new message count long-pull: <span id="counter">0</span></h4>
+<h4>new message count websocket: <span id="counter-ws">0</span></h4>
+<h5>Logs:</h5>
+<pre id="logger"></pre>
+</body>
+</html>
